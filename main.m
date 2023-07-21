@@ -344,6 +344,3 @@ fclose(forcesID);
 % ylabel('$\xi$', 'interpreter', 'latex', 'fontsize', 16)
 % title('Residuals')
 % printFigure, print(fig, 'cylinder_Re100_res', '-dpdf', '-r0');
-
-
-
