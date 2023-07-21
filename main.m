@@ -14,7 +14,7 @@ set(0, 'DefaultAxesFontsize', 14);
 set(0, 'DefaultAxesLineWidth', 1.0);
 
 %% Load/build matrix stuff
-if ~exist('matrixStuff.mat', 'file')    
+if ~exist('./matrixStuff.mat', 'file')
     %% Datos
     Re = 100;
     Nx = 1024; % Celdillas en x
@@ -130,11 +130,11 @@ if ~exist('matrixStuff.mat', 'file')
     clear BN
     
     % Save matrix stuff 
-    save('matrixStuff.mat')
+    save('./matrixStuff.mat')
     
 else
     % Load matrix stuff
-    load('matrixStuff.mat')
+    load('./matrixStuff.mat')
     
 end
 
@@ -152,7 +152,7 @@ vOld = v;
 
 t0 = 0;
 tf = 150;
-t = (t0 + dt):dt:tf;
+t = t0:dt:tf;
 
 % Preallocation for effieciency
 epsU = t*0;
