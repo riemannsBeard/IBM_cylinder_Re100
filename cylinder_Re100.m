@@ -19,7 +19,7 @@ Nx = 1024; % Celdillas en x
 Ny = 1024; % Celdillas en y
 Lx = 26;
 Ly = 26;
-tSampling = 10;
+tSave = 10;
 CFL = 0.5;
 
 %% Staggered Grid Generation
@@ -27,7 +27,7 @@ CFL = 0.5;
 %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
 dt = 3e-3;
 
-itSampling = floor(tSampling/dt);
+%itSampling = floor(tSampling/dt);
 
 %% Immersed Boundary Grid Generation
 Nk = 128;
@@ -211,7 +211,7 @@ for k = 1:length(t)
     disp(['Residuals u = ' num2str(epsU(k))]);
     disp(['Residuals v = ' num2str(epsV(k)) newline]);
     
-    if t(k) <= tSave && (t(k) + dt ) < tSave
+    if t(k) > (tSave - dt) && t(k) <= (tSave + dt)
                 
         vorticity = computeVorticity(ua, va, grid);
         
@@ -268,35 +268,12 @@ toc
 
 %% Plots
 
-% Contours
-fig = figure(1);
-subplot(211)
-contourf(grid.x - 6.5, grid.y - Ly/2, hypot(ua,va), 32,...
-    'LineStyle', 'none'),
-xlabel('$x$'), ylabel('$y$')
-hold on
-shading interp,
-xlim([-5 18]), ylim([-4. 4.])
-plot(ib.xi - 6.5, ib.eta - Ly/2, 'w-', 'linewidth', 1.25)
-box on
-colormap('jet');
-c = colorbar;
-c.TickLabelInterpreter = 'latex';
-c.Label.Interpreter = 'latex';
-c.Label.String = '$\mathbf{u}$';
-c.Label.FontSize = 16;
-% title('$\mathbf{u}$', 'interpreter', 'latex', 'fontsize', 16)
-% pbaspect([Lx Ly 1])
-saveas(fig, 'cylinder_Re100', 'jpeg');
-
-
-% vorticity = (diff(v'))./(diff(grid.xv')) - diff(u)./diff(grid.yu);
-
 % % Contours
-% fig = figure(2);
+% fig = figure(1);
 % subplot(211)
-% contourf(grid.x - 6.5, grid.y - Ly/2, vorticity, 32,...
+% contourf(grid.x - 6.5, grid.y - Ly/2, hypot(ua,va), 32,...
 %     'LineStyle', 'none'),
+% xlabel('$x$'), ylabel('$y$')
 % hold on
 % shading interp,
 % xlim([-5 18]), ylim([-4. 4.])
@@ -305,27 +282,48 @@ saveas(fig, 'cylinder_Re100', 'jpeg');
 % colormap('jet');
 % c = colorbar;
 % c.TickLabelInterpreter = 'latex';
-% title('$\mathbf{u}$', 'interpreter', 'latex', 'fontsize', 16)
-% % pbaspect([Lx Ly 1])
+% c.Label.Interpreter = 'latex';
+% c.Label.String = '$\mathbf{u}$';
+% c.Label.FontSize = 16;
+% % saveas(fig, 'cylinder_Re100', 'jpeg');
+% 
+% vorticity = computeVorticity(ua, va, grid);
+% subplot(212)
+% contourf(grid.x - 6.5, grid.y - Ly/2, vorticity, 32,...
+%     'LineStyle', 'none'),
+% xlabel('$x$'), ylabel('$y$')
+% hold on
+% shading interp,
+% xlim([-5 18]), ylim([-4. 4.])
+% plot(ib.xi - 6.5, ib.eta - Ly/2, 'w-', 'linewidth', 1.25)
+% box on
+% colormap('jet');
+% c = colorbar;
+% caxis([-8 8])
+% c.TickLabelInterpreter = 'latex';
+% c.Label.Interpreter = 'latex';
+% c.Label.String = '$\omega_z$';
+% c.Label.FontSize = 16;
 % saveas(fig, 'cylinder_Re100', 'jpeg');
-
-% Forces
-figure,
-plot(t, -2*f.y, t, -2*f.x)
-ylim([-0.5 3])
-xlabel('$\tau$')
-legend('$C_L$', '$C_D$', 'interpreter', 'latex')
-
-% Residuals
-fig = figure(5);
-loglog(1:k, epsU(1:k), 1:k, epsV(1:k))
-set(gca, 'TickLabelInterpreter','latex', 'fontsize', 12)
-h = legend('$u$', '$v$');
-set(h, 'interpreter', 'latex', 'fontsize', 16)
-xlabel('$N$', 'interpreter', 'latex', 'fontsize', 16)
-ylabel('$\xi$', 'interpreter', 'latex', 'fontsize', 16)
-title('Residuals')
-printFigure, print(fig, 'cylinder_Re100_res', '-dpdf', '-r0');
+% 
+% 
+% % Forces
+% figure,
+% plot(t, -2*f.y, t, -2*f.x)
+% ylim([-0.5 3])
+% xlabel('$\tau$')
+% legend('$C_L$', '$C_D$', 'interpreter', 'latex')
+% 
+% % Residuals
+% fig = figure(5);
+% loglog(1:k, epsU(1:k), 1:k, epsV(1:k))
+% set(gca, 'TickLabelInterpreter','latex', 'fontsize', 12)
+% h = legend('$u$', '$v$');
+% set(h, 'interpreter', 'latex', 'fontsize', 16)
+% xlabel('$N$', 'interpreter', 'latex', 'fontsize', 16)
+% ylabel('$\xi$', 'interpreter', 'latex', 'fontsize', 16)
+% title('Residuals')
+% printFigure, print(fig, 'cylinder_Re100_res', '-dpdf', '-r0');
 
 
 
