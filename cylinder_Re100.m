@@ -14,28 +14,22 @@ set(0, 'DefaultAxesFontsize', 14);
 set(0, 'DefaultAxesLineWidth', 1.0);
 
 %% Datos
-
 Re = 100;
 Nx = 1024; % Celdillas en x
 Ny = 1024; % Celdillas en y
 Lx = 26;
 Ly = 26;
-tSampling = 0.5;
+tSampling = 10;
 CFL = 0.5;
 
 %% Staggered Grid Generation
-
-% alpha.x = 0;
-% alpha.y = 0;
-
 [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny);
 %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
-dt = 1e-3;
+dt = 3e-3;
 
 itSampling = floor(tSampling/dt);
 
 %% Immersed Boundary Grid Generation
-
 Nk = 128;
 R = 0.5;
 ib = IBMcylinder(R, Nk);
@@ -43,7 +37,6 @@ ib.xi = ib.xi + 6.5;
 ib.eta = ib.eta + 0.5*Ly;
 
 %% Boundary conditions
-
 bc.uS = ones(1,Nx-1);
 bc.uN = ones(1,Nx-1);
 bc.uE = zeros(Ny,1);
@@ -55,7 +48,6 @@ bc.vE = zeros(Ny-1,1);
 bc.vW = zeros(Ny-1,1);
 
 %% Immersed Boundary Conditions
-
 ib.Utheta = 0*pi/8;
 
 ib.u = ib.Utheta*sin(ib.theta);
@@ -73,7 +65,6 @@ ib.v = -ib.Utheta*cos(ib.theta);
 
 
 %% Operators
-
 [D, G, R, M] = DGRM(grid, Nx, Ny);
 
 Lhat = laplacianHat(Nx, Ny, grid);
@@ -104,20 +95,15 @@ bc2 = D.uW*(bc.uW.*grid.dY) + ...
     D.vS*(bc.vS'.*grid.dX) + D.vN*(bc.vN'.*grid.dX);
 
 r2 = [bc2; ib.u; ib.v];
-
 clear D
 
-% LU decomposition for performance
-% A = decomposition(A);
-% R = decomposition(R);
-
 %% IBM stuff
-
 % Regularization
 [Hhat_, beta] = Hhat(grid, ib, Nx, Ny);
 Hhat_ = blkdiag(Hhat_.u, Hhat_.v);
 H = sparse(M.M*Hhat_);
-clear Hhat_
+Mhat = M.hat;
+clear M Hhat_
 
 % Interpolation
 Ehat_ = Ehat(grid, ib, Nx, Ny);
@@ -125,9 +111,8 @@ Ehat_ = blkdiag(Ehat_.u, Ehat_.v);
 E = sparse(Ehat_/R);
 clear Ehat_
 
-% LU decomposition for performance
+% Matrix product to increase performance
 EH = sparse(E*H);
-% EH = decomposition(EH);
 clear H
 
 % Matrix product to increase performance
@@ -135,22 +120,15 @@ EHEE = (EH)\E*E';
 clear EH
 
 %% Left-Hand Side term
-
 Q = [G.G, E'];
 clear G E
 
 % Matrix product to increase performance
 BNQ = BN*Q;
 LHS = sparse(Q'*BN*Q);
-% LHS = decomposition(LHS);
 clear BN
 
-% Release unused matrices
-Mhat = M.hat;
-clear M
-
 %% Simulation
-
 u = reshape(u, [], 1);
 v = reshape(v, [], 1);
 
@@ -159,7 +137,7 @@ vOld = v;
 
 t0 = 0;
 tf = 150;
-t = dt:dt:tf;
+t = (t0 + dt):dt:tf;
 
 % Preallocation for effieciency
 epsU = t*0;
@@ -173,6 +151,9 @@ LHS = decomposition(LHS);
 A = decomposition(A);
 R = decomposition(R);
 
+%% Create storage dir
+[~, ~, ~] = mkdir('stored');
+
 %% Temporal evolution
 tic
 for k = 1:length(t)
@@ -185,7 +166,6 @@ for k = 1:length(t)
     rn = Mhat*rnHat;
         
     %% 1. Solve for intermediate velocity
-       
     r1 = rn + bc1;
     
     % Flux calculation    
@@ -194,7 +174,6 @@ for k = 1:length(t)
     qv = q(Ny*(Nx-1)+1:end);
 
     %% 2. Solve the Poisson Equation
-    
     RHS = Q'*q + r2;
     lambda = LHS\RHS;
     
@@ -206,14 +185,11 @@ for k = 1:length(t)
     fTilda.y = lambda(end-Nk+1:end);
     fTilda.f = [fTilda.x; fTilda.y];
     
-%     f.f = -(EH)\E*E'*fTilda.f;
-    f.f = -EHEE*fTilda.f;    
+    f.f = -EHEE*fTilda.f;
     
     %% 3. Projection step
-    
-%     q = q - BN*Q*lambda;
+    % Flux and velocity calculation
     q = q - BNQ*lambda;
-
     vel = R\q;
 
     % Residuals
@@ -234,6 +210,15 @@ for k = 1:length(t)
     disp(['t = ' num2str(t(k))]); % '. Elapsed time: ' num2str(toc) 's.']);
     disp(['Residuals u = ' num2str(epsU(k))]);
     disp(['Residuals v = ' num2str(epsV(k)) newline]);
+    
+    if t(k) <= tSave && (t(k) + dt ) < tSave
+                
+        vorticity = computeVorticity(ua, va, grid);
+        
+        save(['./stored/cylinder_Re100_t' num2str(t(k)) '.mat'],...
+            'ua', 'va', 'vorticity', 'grid');
+        
+    end
 
     % On-the-fly plots (comment for speeding up the code)
 %     if (mod(k, itSampling) == 0)
@@ -288,6 +273,7 @@ fig = figure(1);
 subplot(211)
 contourf(grid.x - 6.5, grid.y - Ly/2, hypot(ua,va), 32,...
     'LineStyle', 'none'),
+xlabel('$x$'), ylabel('$y$')
 hold on
 shading interp,
 xlim([-5 18]), ylim([-4. 4.])
@@ -296,7 +282,10 @@ box on
 colormap('jet');
 c = colorbar;
 c.TickLabelInterpreter = 'latex';
-title('$\mathbf{u}$', 'interpreter', 'latex', 'fontsize', 16)
+c.Label.Interpreter = 'latex';
+c.Label.String = '$\mathbf{u}$';
+c.Label.FontSize = 16;
+% title('$\mathbf{u}$', 'interpreter', 'latex', 'fontsize', 16)
 % pbaspect([Lx Ly 1])
 saveas(fig, 'cylinder_Re100', 'jpeg');
 
@@ -322,7 +311,8 @@ saveas(fig, 'cylinder_Re100', 'jpeg');
 
 % Forces
 figure,
-plot(t, 2*f.y, t, -2*f.x)
+plot(t, -2*f.y, t, -2*f.x)
+ylim([-0.5 3])
 xlabel('$\tau$')
 legend('$C_L$', '$C_D$', 'interpreter', 'latex')
 
