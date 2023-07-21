@@ -1,4 +1,4 @@
-function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny, ~)
+function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny)
 
     grid.X = linspace(0, Lx, Nx+1);
     grid.Y = linspace(0, Ly, Ny+1);

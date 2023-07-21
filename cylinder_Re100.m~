@@ -123,16 +123,16 @@ clear Hhat_
 Ehat_ = Ehat(grid, ib, Nx, Ny);
 Ehat_ = blkdiag(Ehat_.u, Ehat_.v);
 E = sparse(Ehat_/R);
-clear Ehat_
 
 % LU decomposition for performance
 EH = sparse(E*H);
 % EH = decomposition(EH);
-clear H
 
 % Matrix product to increase performance
 EHEE = (EH)\E*E';
-clear EH
+
+% Release unused matrices
+clear Ehat_
 
 %% Left-Hand Side term
 
@@ -141,13 +141,14 @@ clear G E
 
 % Matrix product to increase performance
 BNQ = BN*Q;
+
 LHS = sparse(Q'*BN*Q);
 % LHS = decomposition(LHS);
-clear BN
 
 % Release unused matrices
+clear BN G H 
 Mhat = M.hat;
-clear M
+clear M R
 
 %% Simulation
 
@@ -168,10 +169,6 @@ F = t*0;
 f.x = t*0;
 f.y = t*0;
 
-%% LU decomposition
-LHS = decomposition(LHS);
-A = decomposition(A);
-R = decomposition(R);
 
 %% Temporal evolution
 tic

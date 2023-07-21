@@ -1,4 +1,4 @@
-function [E, alpha] = Ehat(grid, ib, Nx, Ny)
+function E = Ehat(grid, ib, Nx, Ny)
 
     %% u-velocity
     r.x = reshape(grid.xu, 1, []) - ib.xi;

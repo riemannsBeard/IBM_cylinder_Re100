@@ -1,4 +1,4 @@
-function [ D, G, R, M, bc2] = DGRM( grid, Nx, Ny )
+function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
 % Funcion que devuelve los operadores matriciales G, D, R y M
 
     % Vectores unitarios auxiliares
@@ -59,7 +59,7 @@ function [ D, G, R, M, bc2] = DGRM( grid, Nx, Ny )
     R.u = kron(speye(Nx-1), dyj);
     R.v = kron(dxi, speye(Ny-1));
 
-    R.R = blkdiag(R.u, R.v);
+    R = blkdiag(R.u, R.v);
            
     %% MATRIZ DE MASA
     
@@ -79,7 +79,7 @@ function [ D, G, R, M, bc2] = DGRM( grid, Nx, Ny )
     M.hat = blkdiag(Mhat.u, Mhat.v);
     
     % M
-    M.M = R.R\M.hat;
+    M.M = R\M.hat;
     
 end
 
