@@ -1,11 +1,22 @@
-function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny)
+function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0)
 
     grid.X = linspace(0, Lx, Nx+1);
     grid.Y = linspace(0, Ly, Ny+1);
-        
-%     grid.X = stretching(alpha.x, Nx);
-%     grid.Y = stretching(alpha.y, Ny);
- 
+
+%     r = (30/(x0 - hmin))^(1/(131 - 1));
+%     x = (x0 + hmin)*r.^(0:(131 - 1));
+%     grid.X = [-flip(x), -x0:hmin:x0, x] + 30; grid.X(1) = 0;
+%     grid.Y = grid.X;
+
+%     N = 132;
+%     beta = 1.75;
+%  
+%     x = (60 - 30 - x0)*(1 - tanh(beta*(1 - (1:N)/N))./tanh(beta));
+%     xr = x + 30 + x0; xr(end) = 60;
+%     xl = flip(30 - x) - x0; xl(1) = 0;
+%     grid.X = [xl, (30 - x0):hmin:(x0 + 30), xr];
+%     grid.Y = grid.X;
+
     grid.dX = diff(grid.X)';
     grid.dY = diff(grid.Y)';
 

@@ -63,7 +63,9 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
            
     %% MATRIZ DE MASA
     
-    ix = [0.75; ones(Nx-2,1); 1];
+%     ix = [0.75; ones(Nx-2,1); 1];
+
+    ix = [0.75; ones(Nx-2,1); 0.75];
     iy = [0.75; ones(Ny-2,1); 0.75];
 
     Ix = spdiags(ix, 0, Nx, Nx);

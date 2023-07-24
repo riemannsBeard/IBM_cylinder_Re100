@@ -16,26 +16,28 @@ set(0, 'DefaultAxesLineWidth', 1.0);
 %% Load/build matrix stuff
 if ~exist('./matrixStuff.mat', 'file')
     %% Datos
-    Re = 100;
-    Nx = 1024; % Celdillas en x
-    Ny = 1024; % Celdillas en y
-    Lx = 26;
-    Ly = 26;
+    Re = 200;
+    Nx = 512; % Celdillas en x
+    Ny = 512; % Celdillas en y
+    hmin = 0.04;
+    x0 = 0.72;
+    Lx = 60;
+    Ly = 60;
     tSave = 10;
     CFL = 0.5;
     
     %% Staggered Grid Generation
-    [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny);
+    [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0);
     %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
-    dt = 3e-3;
+    dt = 2.5e-3;
     
     %itSampling = floor(tSampling/dt);
     
     %% Immersed Boundary Grid Generation
-    Nk = 128;
+    Nk = 27; %157;
     R = 0.5;
     ib = IBMcylinder(R, Nk);
-    ib.xi = ib.xi + 6.5;
+    ib.xi = ib.xi + 0.5*Lx;
     ib.eta = ib.eta + 0.5*Ly;
     
     %% Boundary conditions
@@ -95,7 +97,7 @@ if ~exist('./matrixStuff.mat', 'file')
     bc2 = D.uW*(bc.uW.*grid.dY) + ...
         D.vS*(bc.vS'.*grid.dX) + D.vN*(bc.vN'.*grid.dX);
     
-    r2 = [bc2; ib.u; ib.v];
+    r2 = [-bc2; ib.u; ib.v];
     clear D
     
     %% IBM stuff
@@ -155,11 +157,11 @@ tf = 150;
 t = t0:dt:tf;
 
 % Preallocation for effieciency
-epsU = t*0;
-epsV = t*0;
-F = t*0;
-f.x = t*0;
-f.y = t*0;
+epsU = NaN(size(t));
+epsV = NaN(size(t));
+F = NaN(size(t));
+f.x = NaN(size(t));
+f.y = NaN(size(t));
 
 %% Create storage and forces dir
 [~, ~, ~] = mkdir('stored');
@@ -189,7 +191,7 @@ for k = 1:length(t)
     qv = q(Ny*(Nx-1)+1:end);
 
     %% 2. Solve the Poisson Equation
-    RHS = Q'*q + r2;
+    RHS = Q'*q - r2;
     lambda = LHS\RHS;
     
     % Pressure calculation
@@ -288,59 +290,57 @@ fclose(forcesID);
 
 %% Plots
 
-% % Contours
-% fig = figure(1);
-% subplot(211)
-% contourf(grid.x - 6.5, grid.y - Ly/2, hypot(ua,va), 32,...
-%     'LineStyle', 'none'),
-% xlabel('$x$'), ylabel('$y$')
-% hold on
-% shading interp,
-% xlim([-5 18]), ylim([-4. 4.])
-% plot(ib.xi - 6.5, ib.eta - Ly/2, 'w-', 'linewidth', 1.25)
-% box on
-% colormap('jet');
-% c = colorbar;
-% c.TickLabelInterpreter = 'latex';
-% c.Label.Interpreter = 'latex';
-% c.Label.String = '$\mathbf{u}$';
-% c.Label.FontSize = 16;
-% % saveas(fig, 'cylinder_Re100', 'jpeg');
-% 
-% vorticity = computeVorticity(ua, va, grid);
-% subplot(212)
-% contourf(grid.x - 6.5, grid.y - Ly/2, vorticity, 32,...
-%     'LineStyle', 'none'),
-% xlabel('$x$'), ylabel('$y$')
-% hold on
-% shading interp,
-% xlim([-5 18]), ylim([-4. 4.])
-% plot(ib.xi - 6.5, ib.eta - Ly/2, 'w-', 'linewidth', 1.25)
-% box on
-% colormap('jet');
-% c = colorbar;
-% caxis([-8 8])
-% c.TickLabelInterpreter = 'latex';
-% c.Label.Interpreter = 'latex';
-% c.Label.String = '$\omega_z$';
-% c.Label.FontSize = 16;
+% Contours
+fig = figure(1);
+subplot(211)
+contourf(grid.x, grid.y, hypot(ua,va), 32,...
+    'LineStyle', 'none'),
+xlabel('$x$'), ylabel('$y$')
+hold on
+shading interp,
+xlim([24 40]), ylim([26 34])
+plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
+box on
+colormap('jet');
+c = colorbar;
+c.TickLabelInterpreter = 'latex';
+c.Label.Interpreter = 'latex';
+c.Label.String = '$\mathbf{u}$';
+c.Label.FontSize = 16;
 % saveas(fig, 'cylinder_Re100', 'jpeg');
-% 
-% 
-% % Forces
-% figure,
-% plot(t, -2*f.y, t, -2*f.x)
-% ylim([-0.5 3])
-% xlabel('$\tau$')
-% legend('$C_L$', '$C_D$', 'interpreter', 'latex')
-% 
-% % Residuals
-% fig = figure(5);
-% loglog(1:k, epsU(1:k), 1:k, epsV(1:k))
-% set(gca, 'TickLabelInterpreter','latex', 'fontsize', 12)
-% h = legend('$u$', '$v$');
-% set(h, 'interpreter', 'latex', 'fontsize', 16)
-% xlabel('$N$', 'interpreter', 'latex', 'fontsize', 16)
-% ylabel('$\xi$', 'interpreter', 'latex', 'fontsize', 16)
-% title('Residuals')
-% printFigure, print(fig, 'cylinder_Re100_res', '-dpdf', '-r0');
+
+vorticity = computeVorticity(ua, va, grid);
+subplot(212)
+contourf(grid.x, grid.y, vorticity, 32,...
+    'LineStyle', 'none'),
+xlabel('$x$'), ylabel('$y$')
+hold on
+xlim([24 40]), ylim([26 34])
+plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
+box on
+colormap('jet');
+c = colorbar;
+clim([-8 8])
+c.TickLabelInterpreter = 'latex';
+c.Label.Interpreter = 'latex';
+c.Label.String = '$\omega_z$';
+c.Label.FontSize = 16;
+saveas(fig, 'cylinder_Re100', 'jpeg');
+
+%% Forces
+figure,
+plot(t, -2*f.y, t, -2*f.x)
+ylim([-0.5 5])
+xlabel('$\tau$')
+legend('$C_L$', '$C_D$', 'interpreter', 'latex')
+
+%% Residuals
+fig = figure(5);
+loglog(1:k, epsU(1:k), 1:k, epsV(1:k))
+set(gca, 'TickLabelInterpreter','latex', 'fontsize', 12)
+h = legend('$u$', '$v$');
+set(h, 'interpreter', 'latex', 'fontsize', 16)
+xlabel('$N$', 'interpreter', 'latex', 'fontsize', 16)
+ylabel('$\xi$', 'interpreter', 'latex', 'fontsize', 16)
+title('Residuals')
+printFigure, print(fig, 'cylinder_Re100_res', '-dpdf', '-r0');

@@ -6,9 +6,9 @@ function [ Nhat, ua, va, ue, ve ] = convectionHat(grid, u, v, Nx, Ny, bc)
     %% Condiciones de contorno (en los nodos de la malla externa)
     
     % u
-    uN = grid.X*0;           
-    uS = grid.X*0;               
-    uW = bc.uW;         
+    uN = grid.X*0 + 1;
+    uS = grid.X*0 + 1;
+    uW = bc.uW;
     uE = u(:,end);
     
     % v
