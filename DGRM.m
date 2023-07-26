@@ -39,17 +39,17 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
     
     % Condiciones de contorno
 
-    d.uW = spdiags(ex, 0, Nx, 1);
+    d.uW = spdiags(-ex, 0, Nx, 1);
     D.uW = kron(d.uW, speye(Ny));
     
-    d.uE = spdiags(-ex, -Nx+1, Nx, 1);
+    d.uE = spdiags(ex, -Nx+1, Nx, 1);
     D.uE = kron(d.uE, speye(Ny));
     
-    d.vN = spdiags(ey, 0, Ny, 1);
-    D.vN = kron(speye(Nx), d.vN);
-    
-    d.vS = spdiags(ey, -Ny+1, Ny, 1);
+    d.vS = spdiags(-ey, 0, Ny, 1);
     D.vS = kron(speye(Nx), d.vS);
+    
+    d.vN = spdiags(ey, -Ny+1, Ny, 1);
+    D.vN = kron(speye(Nx), d.vN);
         
     %% MATRIZ DE FLUJO
     

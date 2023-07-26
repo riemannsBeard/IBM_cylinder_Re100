@@ -1,5 +1,9 @@
 function [] = clean()
 
+clear
+close all
+clc
+
 if exist('./forces', 'dir')
     rmdir('./forces', 's')
 end

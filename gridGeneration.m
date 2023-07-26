@@ -1,7 +1,7 @@
 function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0)
 
-%     grid.X = linspace(0, Lx, Nx+1);
-%     grid.Y = linspace(0, Ly, Ny+1);
+    grid.X = linspace(0, Lx, Nx+1);
+    grid.Y = linspace(0, Ly, Ny+1);
 
 %     r = (30/(x0 - hmin))^(1/(131 - 1));
 %     x = (x0 + hmin)*r.^(0:(131 - 1));
@@ -12,14 +12,14 @@ function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0)
 % Reference: "A new compact difference scheme for second derivative in non-
 % uniform grid expressed in self-adjoint form" by TK Sengupta, S Bhaumik 
 % and Shameem Usman, J. Comp. Phys. 230 (2011) 1822–1848
-    N = 216;
-    beta = 1.5;
- 
-    x = (0.5*Lx - x0)*(1 - tanh(beta*(1 - (1:N)/N))./tanh(beta));
-    xr = x + 0.5*Lx + x0; xr(end) = Lx;
-    xl = flip(0.5*Lx - x) - x0; xl(1) = 0;
-    grid.X = [xl, (0.5*Lx - x0):hmin:(x0 + 0.5*Lx), xr];
-    grid.Y = grid.X;
+%     N = 110;
+%     beta = 2;
+%  
+%     x = (0.5*Lx - x0)*(1 - tanh(beta*(1 - (1:N)/N))./tanh(beta));
+%     xr = x + 0.5*Lx + x0; xr(end) = Lx;
+%     xl = flip(0.5*Lx - x) - x0; xl(1) = 0;
+%     grid.X = [xl, (0.5*Lx - x0):hmin:(x0 + 0.5*Lx), xr];
+%     grid.Y = grid.X;
 
     grid.dX = diff(grid.X)';
     grid.dY = diff(grid.Y)';
