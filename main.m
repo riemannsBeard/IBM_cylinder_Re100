@@ -19,22 +19,26 @@ if ~exist('./matrixStuff.mat', 'file')
     Re = 200;
     Nx = 512; % Celdillas en x
     Ny = 512; % Celdillas en y
-    hmin = 0.04;
-    x0 = 0.72;
-    Lx = 60;
-    Ly = 60;
-    tSave = 10;
-    CFL = 0.5;
+    hmin = 0.02;
+    x0 = 0.8;
+    Lx = 32;
+    Ly = 32;
+    tSave = 1;
+    CFL = 0.4;
     
     %% Staggered Grid Generation
     [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0);
     %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
     dt = 2.5e-3;
+
+%     dt1 = CFL*min(grid.dX);
+%     dt2 = CFL*min(grid.dY);
+%     dt = min(dt1,dt2);
     
     %itSampling = floor(tSampling/dt);
     
     %% Immersed Boundary Grid Generation
-    Nk = 27; %157;
+    Nk = 157;
     R = 0.5;
     ib = IBMcylinder(R, Nk);
     ib.xi = ib.xi + 0.5*Lx;
@@ -153,7 +157,7 @@ uOld = u;
 vOld = v;
 
 t0 = 0;
-tf = 150;
+tf = 5;
 t = t0:dt:tf;
 
 % Preallocation for effieciency
@@ -172,6 +176,7 @@ forcesID = fopen('./forces/forces0', 'w');
 fprintf(forcesID, 'time \t fx \t fy\n');
 
 %% Temporal evolution
+
 tic
 for k = 1:length(t)
             
@@ -222,7 +227,16 @@ for k = 1:length(t)
     f.x(k) = sum(f.f(1:Nk));
     f.y(k) = sum(f.f(Nk+1:end));
     F(k) = hypot(f.x(k), f.y(k));
-    
+
+    % Advective terms
+    [NhatOld, ~, ~] = convectionHat(grid, uOld, vOld, Nx, Ny, bc);
+    [Nhat, ua, va] = convectionHat(grid, u, v, Nx, Ny, bc);
+
+%     u = reshape(u, Ny, Nx-1);
+%     bc.uE(:,end) = u(:,end) - dt*(u(:,end) - u(:,end-1))./grid
+% 
+%     UE = u[:,-1] - Uinf*(u[:,-1]-u[:,-2])*dt/np.diff(Xu)[0,-1]
+
     % Forces writing
     fprintf(forcesID, '\n%6.6f \t %6.6f \t %6.6f', [t(k) -f.x(k) -f.y(k)]);
     
@@ -294,11 +308,12 @@ fclose(forcesID);
 fig = figure(1);
 subplot(211)
 contourf(grid.x, grid.y, hypot(ua,va), 32,...
-    'LineStyle', 'none'),
+    'LineStyle', 'none'),hold on
+% plot(grid.x, grid.y, 'k.')
 xlabel('$x$'), ylabel('$y$')
 hold on
 shading interp,
-xlim([24 40]), ylim([26 34])
+xlim(0.5*Lx + [-7 14]), ylim(0.5*Ly + [-5 5])
 plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
 box on
 colormap('jet');
@@ -311,11 +326,11 @@ c.Label.FontSize = 16;
 
 vorticity = computeVorticity(ua, va, grid);
 subplot(212)
-contourf(grid.x, grid.y, vorticity, 32,...
+contourf(grid.x, grid.y, vorticity, 16,...
     'LineStyle', 'none'),
 xlabel('$x$'), ylabel('$y$')
 hold on
-xlim([24 40]), ylim([26 34])
+xlim(0.5*Lx + [-7 14]), ylim(0.5*Ly + [-5 5])
 plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
 box on
 colormap('jet');
