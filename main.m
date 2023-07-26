@@ -18,7 +18,7 @@ if ~exist('./matrixStuff.mat', 'file')
     %% Datos
     Re = 200;
     Nx = 300; % Celdillas en x
-    Ny = 300; % Celdillas en y
+    Ny = 150; % Celdillas en y
     hmin = 0.02;
     x0 = 0.8;
     Lx = 32;

@@ -12,5 +12,6 @@ function d = delta(r, dr)
     d2 = (1 + sqrt(-3*(r.*m2./dr).^2 + 1))./(3*dr);
     
     d = d1.*m1 + d2.*m2;
+
 end
 

@@ -1,5 +1,9 @@
 function E = Ehat(grid, ib, Nx, Ny)
 
+    Eux = interpolation1D(ib.xi, grid.xu, grid.dX, 1);
+
+
+
     %% u-velocity
     r.x = reshape(grid.xu, 1, []) - ib.xi;
     r.y = reshape(grid.yu, 1, []) - ib.eta;

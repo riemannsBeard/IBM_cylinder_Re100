@@ -52,32 +52,33 @@ function [ Nhat ] = advectionHat(grid, u, v, Nx, Ny, bc)
     u2 = u.*u;
     v2 = v.*v;
     
-    u2a = zeros(Ny, Nx);
-    v2a = zeros(Ny, Nx);
+    u2c = zeros(Ny, Nx);
+    v2c = zeros(Ny, Nx);
     
-    u2a(:,1) = 0.5*(bc.uW.^2 + u2(:,1));
-    u2a(:,2:end-1) = 0.5*(u2(:,2:end) + u2(:,1:end-1));
-    u2a(:,end) = 0.5*(bc.uE.^2 + u2(:,end));
+    u2c(:,1) = 0.5*(bc.uW.^2 + u2(:,1));
+    u2c(:,2:end-1) = 0.5*(u2(:,2:end) + u2(:,1:end-1));
+    u2c(:,end) = 0.5*(bc.uE.^2 + u2(:,end));
+        
+    Nhat.u = diff(u2c, 1, 2)./grid.dXp';
     
-    v2a(1,:) = 0.5*(bc.vS.^2 + v2(1,:));
-    v2a(2:end-1,:) = 0.5*(v2(2:end,:) + v2(1:end-1,:));
-    v2a(end,:) = 0.5*(bc.vN.^2 + v2(end,:));
-    
-    Nhat.u2x = diff(u2a, 1, 2)./grid.dXp';
-    Nhat.v2y = diff(v2a, 1, 1)./grid.dYp;
+    v2c(1,:) = 0.5*(bc.vS.^2 + v2(1,:));
+    v2c(2:end-1,:) = 0.5*(v2(2:end,:) + v2(1:end-1,:));
+    v2c(end,:) = 0.5*(bc.vN.^2 + v2(end,:));
 
-    Nhat.uv = 0.25*(u(2:end,:) + u(end,:)).*(v(:,2:end) + v(:,end-1));
+    Nhat.v = diff(v2c, 1, 1)./grid.dYp;
+
+    uv = 0.25*(u(2:end,:) + u(end,:)).*(v(:,2:end) + v(:,end-1));
     
-    Nhat.uvS = 0.5*bc.uS.*(bc.vS(:,2:end) + bc.vS(:,1:end-1));
-    Nhat.uvN = 0.5*bc.uN.*(bc.vN(:,2:end,:) + bc.vN(:,1:end-1));
+    uvS = 0.5*bc.uS.*(bc.vS(:,2:end) + bc.vS(:,1:end-1));
+    uvN = 0.5*bc.uN.*(bc.vN(:,2:end,:) + bc.vN(:,1:end-1));
     
-    Nhat.uvW = 0.5*bc.vW.*(bc.uW(2:end,:) + bc.uW(1:end-1,:));
-    Nhat.uvE = 0.5*bc.vE.*(bc.uE(2:end,:) + bc.uE(1:end-1,:));    
+    uvW = 0.5*bc.vW.*(bc.uW(2:end,:) + bc.uW(1:end-1,:));
+    uvE = 0.5*bc.vE.*(bc.uE(2:end,:) + bc.uE(1:end-1,:));    
     
     %% Vectorizacion y normalizacion
     
-    Nhat.u = Nhat.u + diff([Nhat.uvS; Nhat.uv; Nhat.uvN], 1, 1)./grid.dY;
-    Nhat.v = Nhat.v + diff([Nhat.uvW Nhat.uv Nhat.uvE], 1, 2)./grid.dX';
+    Nhat.u = Nhat.u + diff([uvS; uv; uvN], 1, 1)./grid.dY;
+    Nhat.v = Nhat.v + diff([uvW, uv, uvE], 1, 2)./grid.dX';
 
     Nhat.u = reshape(Nhat.u, [], 1);
     Nhat.v = reshape(Nhat.v, [], 1);
