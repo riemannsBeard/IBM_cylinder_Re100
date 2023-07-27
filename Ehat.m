@@ -1,6 +1,6 @@
 function E = Ehat(grid, ib, Nx, Ny)
 
-    Eux = interpolation1D(ib.xi, grid.xu, grid.dX, 1);
+    Eux = interpolation1D(ib.xi, grid.Xu, grid.dX, 2);
 
 
 

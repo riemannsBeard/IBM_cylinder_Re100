@@ -6,13 +6,21 @@ function [H, beta] = Hhat(grid, ib, Nx, Ny)
     beta = hypot(ds.x, ds.y);
     
     %% u-velocity
-%     [~, xi_x] = min(abs(ib.xi - grid.Xu), [], 2);
+%     [~, xi_x] = min(abs(ib.xi - grid.Xu), [], 2)
 %     [~, eta_x] = min(abs(ib.eta - grid.Yu), [], 2);
-
-    r.x = ib.xi - grid.Xu;
-    r.y = ib.eta - grid.Yu;
-
     
+    d.x = zeros(size(grid.dXv));
+
+    for i = 1:length(ib.xi)
+        
+        r.x = ib.xi(i) - grid.Xu;
+        r.y = ib.eta(i) - grid.Yu;
+        
+        d.x(i,:) = delta(r.x, grid.dXv);
+        d.y(i,:) = delta(r.y, grid.dY');
+        
+    end
+
     dr.x = repmat(grid.dXv, [Ny-1,1]);
     dr.y = repmat(grid.dY, [Nx,1]);
 

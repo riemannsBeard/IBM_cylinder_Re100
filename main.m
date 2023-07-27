@@ -101,6 +101,14 @@ if ~exist('./matrixStuff.mat', 'file')
 %     clear D
     
     %% IBM stuff
+
+    % Interpolation
+    Ehat_ = Ehat(grid, ib, Nx, Ny);
+    Ehat_ = blkdiag(Ehat_.u, Ehat_.v);
+    E = sparse(Ehat_/R);
+    clear Ehat_    
+    
+    
     % Regularization
     [Hhat_, beta] = Hhat(grid, ib, Nx, Ny);
     Hhat_ = blkdiag(Hhat_.u, Hhat_.v);
@@ -108,11 +116,7 @@ if ~exist('./matrixStuff.mat', 'file')
     Mhat = M.hat;
 %     clear M Hhat_
     
-    % Interpolation
-    Ehat_ = Ehat(grid, ib, Nx, Ny);
-    Ehat_ = blkdiag(Ehat_.u, Ehat_.v);
-    E = sparse(Ehat_/R);
-    clear Ehat_
+
     
     % Matrix product to increase performance
     EH = sparse(E*H);
