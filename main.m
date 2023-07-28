@@ -18,11 +18,11 @@ if ~exist('./matrixStuff.mat', 'file')
     %% Datos
     Re = 200;
     Nx = 300; % Celdillas en x
-    Ny = 150; % Celdillas en y
+    Ny = 300; % Celdillas en y
     hmin = 0.02;
     x0 = 0.8;
-    Lx = 32;
-    Ly = 32;
+    Lx = 60;
+    Ly = 60;
     tSave = 1;
     CFL = 0.4;
     
@@ -31,16 +31,11 @@ if ~exist('./matrixStuff.mat', 'file')
     %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
     dt = 2.5e-3;
 
-%     dt1 = CFL*min(grid.dX);
-%     dt2 = CFL*min(grid.dY);
-%     dt = min(dt1,dt2);
-    
-    %itSampling = floor(tSampling/dt);
-    
     %% Immersed Boundary Grid Generation
-    Nk = 30;
-    R = 0.5;
-    ib = IBMcylinder(R, Nk);
+    r = 0.5;
+    Nk = round((2*pi*r)/grid.cellMin);
+    ib = IBMcylinder(r, Nk);
+    ib.ds = 2*pi*r./Nk*ones(1, Nk);    
     ib.xi = ib.xi + 0.5*Lx;
     ib.eta = ib.eta + 0.5*Ly;
     
@@ -80,12 +75,22 @@ if ~exist('./matrixStuff.mat', 'file')
     M.M = M.hat/R;
     M.inv = inv(M.M);
     
-%     Ahat = sparse(speye(size(Lhat.L))/dt - 0.5*Lhat.L/Re);
-%     A = M.hat*Ahat/R;
-%     clear Ahat
-
-    A = M.M/dt - 0.5*L.L/Re;
-    B = M.M/dt + 0.5*L.L/Re;
+    Ahat = sparse(speye(size(Lhat.L))/dt - 0.5*Lhat.L/Re);
+    A = M.hat*Ahat/R;
+    clear Ahat
+    
+    BN = dt*speye(size(M.M))/M.M + (0.5/Re)*dt*dt*(M.inv*L.L)*M.inv +...
+        ((0.5/Re)^2)*(dt^3)*((M.inv*L.L)^2)*M.inv;
+    clear L
+    
+    % BC's due to Laplacian
+%     bc1hat.u = Lhat.ux0*bc.uW + Lhat.uy1*bc.uN' + ...
+%         Lhat.uy0*bc.uS';
+%     bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
+%         Lhat.vy0*bc.vS';
+%     
+%     bc1 = M.hat*[bc1hat.u; bc1hat.v]/Re;
+%     clear bc1hat
     
 %     BN = dt*speye(size(M.M))/M.M + (0.5/Re)*dt*dt*(M.inv*L.L)*M.inv +...
 %         ((0.5/Re)^2)*(dt^3)*((M.inv*L.L)^2)*M.inv;
@@ -108,16 +113,13 @@ if ~exist('./matrixStuff.mat', 'file')
     E = sparse(Ehat_/R);
     clear Ehat_    
     
-    
     % Regularization
-    [Hhat_, beta] = Hhat(grid, ib, Nx, Ny);
+    Hhat_ = Hhat(grid, ib, Nx, Ny);
     Hhat_ = blkdiag(Hhat_.u, Hhat_.v);
     H = sparse(M.M*Hhat_);
     Mhat = M.hat;
-%     clear M Hhat_
-    
-
-    
+    clear Hhat_
+        
     % Matrix product to increase performance
     EH = sparse(E*H);
     clear H
@@ -130,8 +132,10 @@ if ~exist('./matrixStuff.mat', 'file')
     Q = [G.G, E'];
     clear G E
     
-    BN = dt*speye(size(M.M))/M.M + (0.5/Re)*dt*dt*(M.inv*L.L)*M.inv +...
-        ((0.5/Re)^2)*(dt^3)*((M.inv*L.L)^2)*M.inv;    
+%     BN = dt*speye(size(M.M))/M.M + (0.5/Re)*dt*dt*(M.inv*L.L)*M.inv +...
+%         ((0.5/Re)^2)*(dt^3)*((M.inv*L.L)^2)*M.inv;
+%     
+%     clear M
     
     % Matrix product to increase performance
     BNQ = BN*Q;
@@ -146,7 +150,6 @@ else
     load('./matrixStuff.mat')
     
 end
-
 
 %% Simulation
 u = reshape(u, [], 1);
@@ -176,8 +179,8 @@ fprintf(forcesID, 'time \t fx \t fy\n');
 
 %% Initial calculations
 q = R*[u; v];
-NhatOld = advectionHat(grid, uOld, vOld, Nx, Ny, bc);
-Nhat = advectionHat(grid, u, v, Nx, Ny, bc);
+[NhatOld, ~, ~] = advectionHat(grid, uOld, vOld, Nx, Ny, bc);
+[Nhat, ua, va] = advectionHat(grid, u, v, Nx, Ny, bc);
 
 %% LU decomposition (not allowed to be saved)
 LHS = decomposition(LHS);
@@ -193,17 +196,23 @@ for k = 1:length(t)
     v = reshape(v, [], 1);    
             
     % BC's due to Laplacian
-    bc1hat.u = (Lhat.ux0*bc.uW + Lhat.ux1*bc.uE + Lhat.uy1*bc.uN' + ...
-        Lhat.uy0*bc.uS')/Re - 1.5*Nhat.u + 0.5*NhatOld.u;
-    bc1hat.v = (Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
-        Lhat.vy0*bc.vS')/Re - 1.5*Nhat.v + 0.5*NhatOld.v;
+    bc1hat.u = Lhat.ux0*bc.uW + Lhat.ux1*bc.uE + Lhat.uy1*bc.uN' + ...
+        Lhat.uy0*bc.uS';
+    bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
+        Lhat.vy0*bc.vS';
     
     bc1 = M.hat*[bc1hat.u; bc1hat.v];
-    r1 = B*q + bc1;    
+    
+    %% 1. Solve for intermediate velocity    
+    rnHat = explicitTerms(Lhat, Re, dt, Nhat, NhatOld, u, v);  
+    rn = Mhat*rnHat;
         
+    r1 = rn + bc1;    
+    
     %% 1. Solve for intermediate velocity    
     % Flux calculation    
     qast = A\r1;
+        
     qu = q(1:Ny*(Nx-1));
     qv = q(Ny*(Nx-1)+1:end);
     
@@ -230,7 +239,7 @@ for k = 1:length(t)
     fTilda.y = lambda(end-Nk+1:end);
     fTilda.f = [fTilda.x; fTilda.y];
     
-    f.f = -EHEE*fTilda.f;
+    f.f = -EHEE'*fTilda.f;
     
     % Residuals
     res(k) = norm(qp1 - q)/(dt*norm(qp1));
@@ -258,11 +267,6 @@ for k = 1:length(t)
     % Advective terms
     NhatOld = advectionHat(grid, uOld, vOld, Nx, Ny, bc);
     Nhat = advectionHat(grid, u, v, Nx, Ny, bc);
-
-%     u = reshape(u, Ny, Nx-1);
-%     bc.uE(:,end) = u(:,end) - dt*(u(:,end) - u(:,end-1))./grid
-% 
-%     UE = u[:,-1] - Uinf*(u[:,-1]-u[:,-2])*dt/np.diff(Xu)[0,-1]
 
     % Forces writing
     fprintf(forcesID, '\n%6.6f \t %6.6f \t %6.6f', [t(k) -f.x(k) -f.y(k)]);
@@ -334,7 +338,7 @@ fclose(forcesID);
 % Contours
 fig = figure(1);
 subplot(211)
-contourf(grid.x, grid.y, hypot(ua,va), 32,...
+contourf(grid.xv, grid.yv, v, 32,...
     'LineStyle', 'none'),hold on
 % plot(grid.x, grid.y, 'k.')
 xlabel('$x$'), ylabel('$y$')
@@ -351,6 +355,7 @@ c.Label.String = '$\mathbf{u}$';
 c.Label.FontSize = 16;
 % saveas(fig, 'cylinder_Re100', 'jpeg');
 
+%%
 vorticity = computeVorticity(ua, va, grid);
 subplot(212)
 contourf(grid.x, grid.y, vorticity, 16,...
@@ -372,7 +377,7 @@ saveas(fig, 'cylinder_Re100', 'jpeg');
 %% Forces
 figure,
 plot(t, -2*f.y, t, -2*f.x)
-ylim([-0.5 5])
+% ylim([-0.5 5])
 xlabel('$\tau$')
 legend('$C_L$', '$C_D$', 'interpreter', 'latex')
 

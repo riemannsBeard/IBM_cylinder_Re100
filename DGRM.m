@@ -33,18 +33,26 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
 %     bc2.vS = kron(bcS, grid.dY);
     
     % Boundary terms
-    D.uW = kron(speye(Ny), spdiags(-1, 0, Nx, 1));
-    D.uE = kron(speye(Ny), spdiags(1, -Nx+1, Nx, 1));
-    D.vS = kron(spdiags(-1, 0, Ny, 1), speye(Nx));
-    D.vN = kron(spdiags(1, -Ny+1, Ny, 1), speye(Nx));
+    d.uW = spdiags(-1, 0, Nx, 1);
+    D.uW = kron(d.uW, speye(Ny));
+    
+    d.uE = spdiags(1, -Nx+1, Nx, 1);
+    D.uE = kron(d.uE, speye(Ny));
+    
+    d.vN = spdiags(1, 0, Ny, 1);
+    D.vN = kron(speye(Nx), d.vN);
+    
+    d.vS = spdiags(-1, -Ny+1, Ny, 1);
+    D.vS = kron(speye(Nx), d.vS);
+    
         
     %% MATRIZ DE FLUJO
     
     dyj = sparse(diag(grid.dY, 0));
     dxi = sparse(diag(grid.dX, 0));
     
-    R.u = kron(dyj, speye(Nx-1));
-    R.v = kron(speye(Ny-1), dxi);
+    R.u = kron(speye(Nx-1), dyj);
+    R.v = kron(dxi, speye(Ny-1));
 
     R = blkdiag(R.u, R.v);
            
@@ -60,8 +68,8 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
     Dyp = sparse(diag(grid.dYp, 0));
 
     % Mhat
-    Mhat.u = kron(Iy, Dxp);
-    Mhat.v = kron(Dyp, Ix);
+    Mhat.u = kron(Dxp, Iy);
+    Mhat.v = kron(Ix, Dyp);
 
     M.hat = blkdiag(Mhat.u, Mhat.v);
     
