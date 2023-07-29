@@ -21,8 +21,8 @@ if ~exist('./matrixStuff.mat', 'file')
     Ny = 300; % Celdillas en y
     hmin = 0.02;
     x0 = 0.8;
-    Lx = 32;
-    Ly = 32;
+    Lx = 60;
+    Ly = 60;
     tSave = 1;
     CFL = 0.4;
     
@@ -38,11 +38,13 @@ if ~exist('./matrixStuff.mat', 'file')
     %itSampling = floor(tSampling/dt);
     
     %% Immersed Boundary Grid Generation
-    Nk = 30;
     r = 0.5;
+    Nk = round(2*pi*r/grid.cellMin);
+
     ib = IBMcylinder(r, Nk);
     ib.xi = ib.xi + 0.5*Lx;
     ib.eta = ib.eta + 0.5*Ly;
+    ib.ds = 2*pi*r./Nk.*ones(Nk, 1);
     
     %% Boundary conditions
     bc.uS = ones(1,Nx-1);
@@ -118,6 +120,7 @@ if ~exist('./matrixStuff.mat', 'file')
     E = sparse(Ehat_/R);
     clear Ehat_
     
+    H = E';
     % Matrix product to increase performance
     EH = sparse(E*H);
     clear H
@@ -157,6 +160,7 @@ tf = 5;
 t = t0:dt:tf;
 
 % Preallocation for effieciency
+epsR = NaN(size(t));
 epsU = NaN(size(t));
 epsV = NaN(size(t));
 F = NaN(size(t));
@@ -190,11 +194,7 @@ tic
 for k = 1:length(t)
             
     u = reshape(u, [], 1);
-    
-%     % Advective terms
-%     [NhatOld, ~, ~] = advectionHat(grid, uOld, vOld, Nx, Ny);
-%     [Nhat, ua, va] = advectionHat(grid, u, v, Nx, Ny);
-    
+        
     bc1hat.u = Lhat.ux0*bc.uW + Lhat.ux1*bc.uE + Lhat.uy1*bc.uN' + ...
         Lhat.uy0*bc.uS';
     bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
@@ -236,21 +236,27 @@ for k = 1:length(t)
     %% 3. Projection step
     % Flux and velocity calculation
     qp1 = qast - BNQ*lambda;
-
-    phi = reshape(phi, Ny, Nx);
+    
+    % Residuals calculation
+    epsR(k) = norm(qp1 - q)/(dt*norm(qp1));
 
     % Forces storage
     f.x(k) = sum(f.f(1:Nk));
     f.y(k) = sum(f.f(Nk+1:end));
     F(k) = hypot(f.x(k), f.y(k));
     
+    % Update flux
     q = qp1;
     
+    % Recover velocity
     vel = R\q;
     
+%     % Recover pressure
+%     phi = reshape(phi, Ny, Nx);    
+    
     % Residuals
-    epsU(k) = max(abs(u - vel(1:Ny*(Nx-1))));
-    epsV(k) = max(abs(v - vel(Ny*(Nx-1)+1:end)));    
+    epsU(k) = norm(u - vel(1:Ny*(Nx-1)));
+    epsV(k) = norm(v - vel(Ny*(Nx-1)+1:end));    
     
     % Separation of velocity components
     u = vel(1:Ny*(Nx-1));
@@ -274,6 +280,7 @@ for k = 1:length(t)
     
     % Information
     disp(['t = ' num2str(t(k))]); % '. Elapsed time: ' num2str(toc) 's.']);
+    disp(['Residuals q = ' num2str(epsR(k))]);    
     disp(['Residuals u = ' num2str(epsU(k))]);
     disp(['Residuals v = ' num2str(epsV(k)) newline]);
     
@@ -368,7 +375,7 @@ plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
 box on
 colormap('jet');
 c = colorbar;
-clim([-8 8])
+caxis([-8 8])
 c.TickLabelInterpreter = 'latex';
 c.Label.Interpreter = 'latex';
 c.Label.String = '$\omega_z$';

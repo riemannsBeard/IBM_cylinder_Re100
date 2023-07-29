@@ -3,7 +3,9 @@ function [H, beta] = Hhat(grid, ib, Nx, Ny)
     ds.x = ib.dxi';
     ds.y = ib.deta';
     
-    beta = hypot(ds.x, ds.y);
+    beta = ib.ds'; % hypot(ds.x, ds.y);
+    
+%     beta = blkdiag(diag(ib.ds, 0), diag(ib.ds, 0));
     
     %% u-velocity
     r.x = ib.xi' - reshape(grid.xu, [], 1);

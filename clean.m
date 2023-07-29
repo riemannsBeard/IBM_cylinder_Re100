@@ -1,7 +1,7 @@
 function [] = clean()
 
 clc
-clear all
+clear global
 close all
 
 
