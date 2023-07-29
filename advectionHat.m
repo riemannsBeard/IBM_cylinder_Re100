@@ -1,77 +1,102 @@
-function [ Nhat, ua, va ] = advectionHat(grid, u, v, Nx, Ny)
+function [ Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc)
    
     u = reshape(u, Ny, Nx-1);
     v = reshape(v, Ny-1, Nx);
     
     %% Condiciones de contorno (en los nodos de la malla externa)
     
-    % u
-    bc.uN = grid.X*0;           
-    bc.uS = grid.X*0;               
-    bc.uW = 0.5*(grid.Y(2:end) + grid.Y(1:end-1))'*0 + 1;
-    bc.uE = 0.5*(grid.Y(2:end) + grid.Y(1:end-1))'*0 + 1;
-    
-    % v
-    bc.vN = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;
-    bc.vS = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;
-    bc.vW = grid.Y'*0;
-    bc.vE = grid.Y'*0;
+%     % u
+%     bc.uN = grid.X*0;           
+%     bc.uS = grid.X*0;               
+%     bc.uW = 0.5*(grid.Y(2:end) + grid.Y(1:end-1))'*0 + 1;
+%     bc.uE = 0.5*(grid.Y(2:end) + grid.Y(1:end-1))'*0 + 1;
+%     
+%     % v
+%     bc.vN = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;
+%     bc.vS = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;
+%     bc.vW = grid.Y'*0;
+%     bc.vE = grid.Y'*0;
     
     %% Tratamiento de los términos convectivos
-    
-    % Añado contornos laterales y filas fantasma a la malla interna de las
-    % velocidades
-    ue = [bc.uW u bc.uE];
-    ue = [2*bc.uS - ue(1,:); ue; 2*bc.uN - ue(end,:)];
-    
-    ve = [bc.vS; v; bc.vN];
-    ve = [2*bc.vW - ve(:,1) ve 2*bc.vE - ve(:,end)];
+        
+%     % Añado contornos laterales y filas fantasma a la malla interna de las
+%     % velocidades
+%     ue = [bc.uW u bc.uE];
+%     ue = [2*bc.uS - ue(:,1); ue; 2*bc.uN - ue(:,end)];
+%     
+%     ve = [bc.vS; v; bc.vN];
+%     ve = [2*bc.vW - ve(:,1) ve 2*bc.vE - ve(:,end)];
 
     % Interpolacion lineal por filas para que ambas velocidades esten en
-    % los nodos de la malla externa
-    ua = 0.5*(ue(2:end,:) + ue(1:end-1,:));
-    va = 0.5*(ve(:,2:end) + ve(:,1:end-1));
+%     % los nodos de la malla externa
+%     ua = 0.5*(ue(2:end,:) + ue(1:end-1,:));
+%     va = 0.5*(ve(:,2:end) + ve(:,1:end-1));
     
 %     ud = diff(ue)/2;
 %     vd = diff(ve')'/2;
     
-    % Calculo las derivadas que involucran al producto de ambas velocidades
-    Nhat.vux = diff(ua.*va, 1, 2)./grid.dX';
-    Nhat.uvy = diff(ua.*va, 1, 1)./grid.dY;
+    Nhat.u = zeros(size(u));
+    Nhat.v = zeros(size(v));
+    
+    % u
+    u2 = u.^2;   
+    u2c = zeros(Ny, Nx);
+    u2c(:,1) = 0.5*(bc.uW.^2 + u2(:,1));
+    u2c(:,2:end-1) = 0.5*(u2(:,2:end) + u2(:,1:end-1));
+    u2c(:,end) = 0.5*(bc.uE.^2 + u2(:,end));
+    
+    Nhat.u = diff(u2c')'./grid.dXp';
 
-    % Interpolacion lineal por columnas para que, al derivar, ambas
-    % velocidades queden en la posicion de la presion
-    ua = 0.5*(ue(2:end-1,1:end-1) + ue(2:end-1, 2:end));
-    va = 0.5*(ve(1:end-1,2:end-1) + ve(2:end, 2:end-1));
+    % v
+    v2 = v.^2;    
+    v2c = zeros(Ny, Nx);
+    v2c(end,:) = 0.5*(bc.vN.^2 + v2(end,:));
+    v2c(2:end-1,:) = 0.5*(v2(2:end,:) + v2(1:end-1,:));
+    v2c(1,:) = 0.5*(bc.vS.^2 + v2(1,:));
     
-    % Calculo de las derivadas que involucran al termino de la velocidad al
-    % cuadrado
-    u2 = u.*u;
-    v2 = v.*v;
+    Nhat.v = diff(v2c)./grid.dYp;
     
-    u2a = zeros(size(ua));
-    v2a = zeros(size(va));
+    % uv
+    uv = 0.25*(u(2:end,:) + u(1:end-1,:)).*(v(:,2:end) + v(:,1:end-1));
     
-    u2a(:,1) = 0.5*(bc.uW.^2 + u2(:,1));
-    u2a(:,2:end-1) = 0.5*(u2(:,2:end) + u2(:,1:end-1));
-    u2a(:,end) = 0.5*(bc.uE.^2 + u2(:,end));
+    uvS = 0.5*bc.uS.*(bc.vS(2:end) + bc.vS(1:end-1));
+    uvN = 0.5*bc.uN.*(bc.vN(2:end) + bc.vN(1:end-1));
     
-    v2a(1,:) = 0.5*(bc.vS.^2 + v2(1,:));
-    v2a(2:end-1,:) = 0.5*(v2(2:end,:) + v2(1:end-1,:));
-    v2a(end,:) = 0.5*(bc.vN.^2 + v2(end,:));
-    
-    Nhat.u2x = diff(u2a, 1, 2)./grid.dXp';
-    Nhat.v2y = diff(v2a, 1, 1)./grid.dYp; 
+    uvW = 0.5*bc.vW.*(bc.uW(2:end) + bc.uW(1:end-1));
+    uvE = 0.5*bc.vE.*(bc.uE(2:end) + bc.uE(1:end-1));
 
     %% Vectorizacion y normalizacion
-
-    Nhat.u = reshape(Nhat.u2x + Nhat.uvy(:,2:end-1), [], 1);
-    Nhat.v = reshape(Nhat.v2y + Nhat.vux(2:end-1,:), [], 1);
-      
-    %% Velocidades en la malla externa
     
-    ua = (ue(2:end,:) + ue(1:end-1,:))/2;
-    va = (ve(:,2:end) + ve(:,1:end-1))/2;
+    Nhat.u = reshape(Nhat.u + diff([uvS; uv; uvN], 1, 1)./grid.dY, [], 1);
+    Nhat.v = reshape(Nhat.v + diff([uvW uv uvE], 1, 2)./grid.dX', [], 1);
+    
+    
+    %% Condiciones de contorno (en los nodos de la malla externa)
+    
+    % u
+    uN = grid.X*0 + 1;
+    uS = grid.X*0 + 1;
+    uW = bc.uW;
+    uE = u(:,end);
+    
+    % v
+    vN = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;
+    vS = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;
+    vW = grid.Y'*0;
+    vE = grid.Y'*0;
+    
+    %% Velocidades en la malla externa
+    % Solucion en los vertices de las celdillas
+    ue = [uW u uE];
+    ue = [2*uS - ue(1,:); ue; 2*uN - ue(end,:)];
+    
+    ve = [vS; v; vN];
+    ve = [2*vW - ve(:,1) ve 2*vE - ve(:,end)];
+    
+    %% Solucion en los nodos correspondientes
+    
+    ua = 0.5*(ue(2:end,:) + ue(1:end-1,:));
+    va = 0.5*(ve(:,2:end) + ve(:,1:end-1));    
     
 end
 

@@ -17,8 +17,8 @@ set(0, 'DefaultAxesLineWidth', 1.0);
 if ~exist('./matrixStuff.mat', 'file')
     %% Datos
     Re = 200;
-    Nx = 512; % Celdillas en x
-    Ny = 512; % Celdillas en y
+    Nx = 300; % Celdillas en x
+    Ny = 300; % Celdillas en y
     hmin = 0.02;
     x0 = 0.8;
     Lx = 32;
@@ -29,7 +29,7 @@ if ~exist('./matrixStuff.mat', 'file')
     %% Staggered Grid Generation
     [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0);
     %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
-    dt = 2.5e-3;
+    dt = 5e-3;
 
 %     dt1 = CFL*min(grid.dX);
 %     dt2 = CFL*min(grid.dY);
@@ -38,16 +38,16 @@ if ~exist('./matrixStuff.mat', 'file')
     %itSampling = floor(tSampling/dt);
     
     %% Immersed Boundary Grid Generation
-    Nk = 157;
-    R = 0.5;
-    ib = IBMcylinder(R, Nk);
+    Nk = 30;
+    r = 0.5;
+    ib = IBMcylinder(r, Nk);
     ib.xi = ib.xi + 0.5*Lx;
     ib.eta = ib.eta + 0.5*Ly;
     
     %% Boundary conditions
     bc.uS = ones(1,Nx-1);
     bc.uN = ones(1,Nx-1);
-    bc.uE = zeros(Ny,1);
+    bc.uE = ones(Ny,1);
     bc.uW = ones(Ny,1);
     
     bc.vS = zeros(1,Nx);
@@ -88,21 +88,21 @@ if ~exist('./matrixStuff.mat', 'file')
         ((0.5/Re)^2)*(dt^3)*((M.inv*L.L)^2)*M.inv;
     clear L
     
-    % BC's due to Laplacian
-    bc1hat.u = Lhat.ux0*bc.uW + Lhat.uy1*bc.uN' + ...
-        Lhat.uy0*bc.uS';
-    bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
-        Lhat.vy0*bc.vS';
+%    % BC's due to Laplacian
+%     bc1hat.u = Lhat.ux0*bc.uW + Lhat.uy1*bc.uN' + ...
+%         Lhat.uy0*bc.uS';
+%     bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
+%         Lhat.vy0*bc.vS';
+%     
+%     bc1 = M.hat*[bc1hat.u; bc1hat.v]/Re;
+%     clear bc1hat
     
-    bc1 = M.hat*[bc1hat.u; bc1hat.v]/Re;
-    clear bc1hat
-    
-    % BC's due to Divergence
-    bc2 = D.uW*(bc.uW.*grid.dY) + ...
-        D.vS*(bc.vS'.*grid.dX) + D.vN*(bc.vN'.*grid.dX);
-    
-    r2 = [-bc2; ib.u; ib.v];
-    clear D
+%     % BC's due to Divergence
+%     bc2 = -(D.uW*(bc.uW.*grid.dY) + D.uE*(r.*grid.dY) + ...
+%         D.vS*(bc.vS'.*grid.dX) + D.vN*(bc.vN'.*grid.dX));
+%     
+%     r2 = [-bc2; ib.u; ib.v];
+%     clear D
     
     %% IBM stuff
     % Regularization
@@ -110,7 +110,7 @@ if ~exist('./matrixStuff.mat', 'file')
     Hhat_ = blkdiag(Hhat_.u, Hhat_.v);
     H = sparse(M.M*Hhat_);
     Mhat = M.hat;
-    clear M Hhat_
+    clear Hhat_
     
     % Interpolation
     Ehat_ = Ehat(grid, ib, Nx, Ny);
@@ -144,10 +144,6 @@ else
     
 end
 
-%% LU decomposition (not allowed to be saved)
-LHS = decomposition(LHS);
-A = decomposition(A);
-R = decomposition(R);
 
 %% Simulation
 u = reshape(u, [], 1);
@@ -175,14 +171,36 @@ f.y = NaN(size(t));
 forcesID = fopen('./forces/forces0', 'w');
 fprintf(forcesID, 'time \t fx \t fy\n');
 
+q = R*[u(:); v(:)];
+qast = q;
+
+% Advective terms
+[NhatOld, ~, ~, ~, ~] = advectionHat(grid, uOld, vOld, Nx, Ny, bc);
+% [Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc);
+Nhat = NhatOld;
+
+%% LU decomposition (not allowed to be saved)
+LHS = decomposition(LHS);
+A = decomposition(A);
+R = decomposition(R);
+
 %% Temporal evolution
 
 tic
 for k = 1:length(t)
             
-    % Advective terms
-    [NhatOld, ~, ~] = convectionHat(grid, uOld, vOld, Nx, Ny, bc);
-    [Nhat, ua, va] = convectionHat(grid, u, v, Nx, Ny, bc);
+    u = reshape(u, [], 1);
+    
+%     % Advective terms
+%     [NhatOld, ~, ~] = advectionHat(grid, uOld, vOld, Nx, Ny);
+%     [Nhat, ua, va] = advectionHat(grid, u, v, Nx, Ny);
+    
+    bc1hat.u = Lhat.ux0*bc.uW + Lhat.ux1*bc.uE + Lhat.uy1*bc.uN' + ...
+        Lhat.uy0*bc.uS';
+    bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
+        Lhat.vy0*bc.vS';
+    
+    bc1 = M.hat*[bc1hat.u; bc1hat.v]/Re;
     
     rnHat = explicitTerms(Lhat, Re, dt, Nhat, NhatOld, u, v);  
     rn = Mhat*rnHat;
@@ -191,14 +209,20 @@ for k = 1:length(t)
     r1 = rn + bc1;
     
     % Flux calculation    
-    q = A\r1;
+    qast = A\r1;
     qu = q(1:Ny*(Nx-1));
     qv = q(Ny*(Nx-1)+1:end);
 
     %% 2. Solve the Poisson Equation
-    RHS = Q'*q - r2;
-    lambda = LHS\RHS;
+    % BC's due to Divergence
+    bc2 = -(D.uW*(bc.uW.*grid.dY) + D.uE*(bc.uE.*grid.dY) + ...
+        D.vS*(bc.vS'.*grid.dX) + D.vN*(bc.vN'.*grid.dX));
     
+    r2 = [-bc2; ib.u; ib.v];    
+    
+    RHS = Q'*qast - r2;
+    lambda = LHS\RHS;
+        
     % Pressure calculation
     phi = lambda(1:end-2*Nk);
     
@@ -211,26 +235,34 @@ for k = 1:length(t)
     
     %% 3. Projection step
     % Flux and velocity calculation
-    q = q - BNQ*lambda;
-    vel = R\q;
+    qp1 = qast - BNQ*lambda;
 
-    % Residuals
-    epsU(k) = max(abs(u - vel(1:Ny*(Nx-1))));
-    epsV(k) = max(abs(v - vel(Ny*(Nx-1)+1:end)));
-
-    % Separation of velocity components
-    u = vel(1:Ny*(Nx-1));
-    v = vel(Ny*(Nx-1)+1:end);
     phi = reshape(phi, Ny, Nx);
 
     % Forces storage
     f.x(k) = sum(f.f(1:Nk));
     f.y(k) = sum(f.f(Nk+1:end));
     F(k) = hypot(f.x(k), f.y(k));
+    
+    q = qp1;
+    
+    vel = R\q;
+    
+    % Residuals
+    epsU(k) = max(abs(u - vel(1:Ny*(Nx-1))));
+    epsV(k) = max(abs(v - vel(Ny*(Nx-1)+1:end)));    
+    
+    % Separation of velocity components
+    u = vel(1:Ny*(Nx-1));
+    v = vel(Ny*(Nx-1)+1:end);
+    
+    u = reshape(u, Ny, Nx-1);
+    
+    bc.uE = bc.uE - dt./grid.dX.*(bc.uE - u(:,end));
 
     % Advective terms
-    [NhatOld, ~, ~] = convectionHat(grid, uOld, vOld, Nx, Ny, bc);
-    [Nhat, ua, va] = convectionHat(grid, u, v, Nx, Ny, bc);
+    NhatOld = Nhat; 
+    [Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc);
 
 %     u = reshape(u, Ny, Nx-1);
 %     bc.uE(:,end) = u(:,end) - dt*(u(:,end) - u(:,end-1))./grid
@@ -324,6 +356,7 @@ c.Label.String = '$\mathbf{u}$';
 c.Label.FontSize = 16;
 % saveas(fig, 'cylinder_Re100', 'jpeg');
 
+%%
 vorticity = computeVorticity(ua, va, grid);
 subplot(212)
 contourf(grid.x, grid.y, vorticity, 16,...

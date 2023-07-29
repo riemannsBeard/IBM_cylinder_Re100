@@ -9,8 +9,12 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
     % Se aplica a la presion
         
     % Operador derivada para una fila y una columna
-    g.x = spdiags([-ex, ex], [0, 1], Nx-1, Nx);
-    g.y = spdiags([-ey, ey], [0, 1], Ny-1, Ny);
+%     g.x = spdiags([-ex, ex], [0, 1], Nx-1, Nx);
+%     g.y = spdiags([-ey, ey], [0, 1], Ny-1, Ny);
+
+    g.x = spdiags(ones(Nx-1, 1)*[-1, 1], [0, 1], Nx-1, Nx);
+    g.y = spdiags(ones(Nx-1, 1)*[-1, 1], [0, 1], Ny-1, Ny);
+
            
     %% OPERADOR DIVERGENCIA
     % Se aplica a las velocidades
@@ -18,7 +22,7 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
     d.y = -g.y';
     
     % Account for Neumann BC
-    d.x(end,end) = 0;
+%     d.x(end,end) = 0;
 
     D.x = kron(d.x, speye(Ny));
     D.y = kron(speye(Nx), d.y);
@@ -27,29 +31,42 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
     
     G.G = -D.D';
     
-    bcW = zeros(Nx,1); bcW(1) = 1;
-    bcE = zeros(Nx,1); bcE(end) = -1;
-    bcN = zeros(Ny,1); bcN(1) = 1;
-    bcS = zeros(Ny,1); bcS(end) = -1;
+    G.G = [kron(g.x, speye(Ny)); kron(speye(Nx), g.y)];
     
-    bc2.uW = kron(bcW, grid.dY);
-    bc2.uE = kron(grid.dY, bcE);
-    bc2.vN = kron(bcN, grid.dX);
-    bc2.vS = kron(bcS, grid.dY);
+%     bcW = zeros(Nx,1); bcW(1) = 1;
+%     bcE = zeros(Nx,1); bcE(end) = -1;
+%     bcN = zeros(Ny,1); bcN(1) = 1;
+%     bcS = zeros(Ny,1); bcS(end) = -1;
+%     
+%     bc2.uW = kron(bcW, grid.dY);
+%     bc2.uE = kron(grid.dY, bcE);
+%     bc2.vN = kron(bcN, grid.dX);
+%     bc2.vS = kron(bcS, grid.dY);
     
     % Condiciones de contorno
+%     d.uW = spdiags(ex, 0, Nx, 1);
+%     D.uW = kron(d.uW, speye(Ny));
+%     
+%     d.uE = spdiags(-ex, -Nx+1, Nx, 1);
+%     D.uE = kron(d.uE, speye(Ny));
+%     
+%     d.vN = spdiags(ey, 0, Ny, 1);
+%     D.vN = kron(speye(Nx), d.vN);
+%     
+%     d.vS = spdiags(ey, -Ny+1, Ny, 1);
+%     D.vS = kron(speye(Nx), d.vS);
 
-    d.uW = spdiags(ex, 0, Nx, 1);
+    d.uW = spdiags(-1, 0, Nx, 1);
     D.uW = kron(d.uW, speye(Ny));
     
-    d.uE = spdiags(-ex, -Nx+1, Nx, 1);
+    d.uE = spdiags(1, -Nx+1, Nx, 1);
     D.uE = kron(d.uE, speye(Ny));
     
-    d.vN = spdiags(ey, 0, Ny, 1);
-    D.vN = kron(speye(Nx), d.vN);
-    
-    d.vS = spdiags(ey, -Ny+1, Ny, 1);
+    d.vS = spdiags(-1, 0, Ny, 1);
     D.vS = kron(speye(Nx), d.vS);
+    
+    d.vN = spdiags(1, -Ny+1, Ny, 1);
+    D.vN = kron(speye(Nx), d.vN);
         
     %% MATRIZ DE FLUJO
     
