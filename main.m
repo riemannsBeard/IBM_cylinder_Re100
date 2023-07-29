@@ -23,7 +23,7 @@ if ~exist('./matrixStuff.mat', 'file')
     x0 = 0.8;
     Lx = 60;
     Ly = 60;
-    tSave = 1;
+    tSave = 10;
     CFL = 0.4;
     
     %% Staggered Grid Generation
@@ -147,7 +147,6 @@ else
     
 end
 
-
 %% Simulation
 u = reshape(u, [], 1);
 v = reshape(v, [], 1);
@@ -156,7 +155,7 @@ uOld = u;
 vOld = v;
 
 t0 = 0;
-tf = 5;
+tf = 180;
 t = t0:dt:tf;
 
 % Preallocation for effieciency
@@ -363,7 +362,6 @@ c.Label.String = '$\mathbf{u}$';
 c.Label.FontSize = 16;
 % saveas(fig, 'cylinder_Re100', 'jpeg');
 
-%%
 vorticity = computeVorticity(ua, va, grid);
 subplot(212)
 contourf(grid.x, grid.y, vorticity, 16,...
@@ -386,6 +384,7 @@ saveas(fig, 'cylinder_Re100', 'jpeg');
 figure,
 plot(t, -2*f.y, t, -2*f.x)
 ylim([-0.5 5])
+xlim([0 3.5])
 xlabel('$\tau$')
 legend('$C_L$', '$C_D$', 'interpreter', 'latex')
 
