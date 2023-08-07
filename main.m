@@ -23,27 +23,31 @@ if ~exist('./matrixStuff.mat', 'file')
     x0 = 0.8;
     Lx = 60;
     Ly = 60;
-    tSave = 10;
     CFL = 0.4;
     
     %% Staggered Grid Generation
     [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0);
     %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
     dt = 5e-3;
+    t0 = 0;
+    tf = 360;
+    t = t0:dt:tf;
 
 %     dt1 = CFL*min(grid.dX);
 %     dt2 = CFL*min(grid.dY);
 %     dt = min(dt1,dt2);
+
+    nSave = round(10/dt);
     
     %itSampling = floor(tSampling/dt);
     
     %% Immersed Boundary Grid Generation
     r = 0.5;
-    Nk = round(2*pi*r/grid.cellMin);
+    Nk = round(2*pi*r/hmin);
 
     ib = IBMcylinder(r, Nk);
-    ib.xi = ib.xi + 0.5*Lx;
-    ib.eta = ib.eta + 0.5*Ly;
+%     ib.xi = ib.xi + 0.5*Lx;
+%     ib.eta = ib.eta + 0.5*Ly;
     ib.ds = 2*pi*r./Nk.*ones(Nk, 1);
     
     %% Boundary conditions
@@ -90,43 +94,30 @@ if ~exist('./matrixStuff.mat', 'file')
         ((0.5/Re)^2)*(dt^3)*((M.inv*L.L)^2)*M.inv;
     clear L
     
-%    % BC's due to Laplacian
-%     bc1hat.u = Lhat.ux0*bc.uW + Lhat.uy1*bc.uN' + ...
-%         Lhat.uy0*bc.uS';
-%     bc1hat.v = Lhat.vx0*bc.vW + Lhat.vx1*bc.vE + Lhat.vy1*bc.vN' + ...
-%         Lhat.vy0*bc.vS';
-%     
-%     bc1 = M.hat*[bc1hat.u; bc1hat.v]/Re;
-%     clear bc1hat
-    
-%     % BC's due to Divergence
-%     bc2 = -(D.uW*(bc.uW.*grid.dY) + D.uE*(r.*grid.dY) + ...
-%         D.vS*(bc.vS'.*grid.dX) + D.vN*(bc.vN'.*grid.dX));
-%     
-%     r2 = [-bc2; ib.u; ib.v];
-%     clear D
-    
     %% IBM stuff
-    % Regularization
-    [Hhat_, beta] = Hhat(grid, ib, Nx, Ny);
-    Hhat_ = blkdiag(Hhat_.u, Hhat_.v);
-    H = sparse(M.M*Hhat_);
-    Mhat = M.hat;
-    clear Hhat_
     
     % Interpolation
     Ehat_ = Ehat(grid, ib, Nx, Ny);
     Ehat_ = blkdiag(Ehat_.u, Ehat_.v);
-    E = sparse(Ehat_/R);
-    clear Ehat_
+    E = sparse(Ehat_/R);    
     
-    H = E';
+    % Regularization
+    [Hhat_, beta] = Hhat(grid, ib, Nx, Ny);
+    Hhat_ = blkdiag(Hhat_.u, Hhat_.v);
+    Hhat_ =  Hhat_'*beta;
+%     H = sparse(M.M*Hhat_);
+    H = sparse(M.hat*Hhat_);
+    Mhat = M.hat;
+        
+    clear Ehat_ Hhat_    
+%     H = E';
     % Matrix product to increase performance
+    EET = E*E';    
     EH = sparse(E*H);
     clear H
     
     % Matrix product to increase performance
-    EHEE = (EH)\E*E';
+    EEbyEH = (EH)\E*E';
     clear EH
     
     %% Left-Hand Side term
@@ -154,10 +145,6 @@ v = reshape(v, [], 1);
 uOld = u;
 vOld = v;
 
-t0 = 0;
-tf = 180;
-t = t0:dt:tf;
-
 % Preallocation for effieciency
 epsR = NaN(size(t));
 epsU = NaN(size(t));
@@ -179,7 +166,6 @@ qast = q;
 
 % Advective terms
 [NhatOld, ~, ~, ~, ~] = advectionHat(grid, uOld, vOld, Nx, Ny, bc);
-% [Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc);
 Nhat = NhatOld;
 
 %% LU decomposition (not allowed to be saved)
@@ -223,25 +209,26 @@ for k = 1:length(t)
     lambda = LHS\RHS;
         
     % Pressure calculation
-    phi = lambda(1:end-2*Nk);
-    
-    % Forces
-    fTilda.x = lambda(end-2*Nk+1:end-Nk);
-    fTilda.y = lambda(end-Nk+1:end);
-    fTilda.f = [fTilda.x; fTilda.y];
-    
-    f.f = -EHEE*fTilda.f;
-    
+%     phi = lambda(1:end-2*Nk);
+        
     %% 3. Projection step
     % Flux and velocity calculation
     qp1 = qast - BNQ*lambda;
     
     % Residuals calculation
     epsR(k) = norm(qp1 - q)/(dt*norm(qp1));
+    
+    %% Forces
+    fTilda.x = lambda(end-2*Nk+1:end-Nk);
+    fTilda.y = lambda(end-Nk+1:end);
+    fTilda.f = [fTilda.x; fTilda.y];
+    
+%     f.f = -EEbyEH*fTilda.f;
+    f.f = -EEbyEH*lambda(Ny*Nx+1:end);    
 
     % Forces storage
-    f.x(k) = sum(f.f(1:Nk));
-    f.y(k) = sum(f.f(Nk+1:end));
+    f.x(k) = sum(f.f(1:Nk).*ib.ds);
+    f.y(k) = sum(f.f(Nk+1:end).*ib.ds);
     F(k) = hypot(f.x(k), f.y(k));
     
     % Update flux
@@ -260,19 +247,14 @@ for k = 1:length(t)
     % Separation of velocity components
     u = vel(1:Ny*(Nx-1));
     v = vel(Ny*(Nx-1)+1:end);
-    
-    u = reshape(u, Ny, Nx-1);
-    
-    bc.uE = bc.uE - dt./grid.dX.*(bc.uE - u(:,end));
+
+    % Update convective BC
+    u = reshape(u, Ny, Nx-1);    
+    bc.uE = bc.uE - dt./grid.dX(end).*(bc.uE - u(:,end));
 
     % Advective terms
     NhatOld = Nhat; 
     [Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc);
-
-%     u = reshape(u, Ny, Nx-1);
-%     bc.uE(:,end) = u(:,end) - dt*(u(:,end) - u(:,end-1))./grid
-% 
-%     UE = u[:,-1] - Uinf*(u[:,-1]-u[:,-2])*dt/np.diff(Xu)[0,-1]
 
     % Forces writing
     fprintf(forcesID, '\n%6.6f \t %6.6f \t %6.6f', [t(k) -f.x(k) -f.y(k)]);
@@ -283,11 +265,11 @@ for k = 1:length(t)
     disp(['Residuals u = ' num2str(epsU(k))]);
     disp(['Residuals v = ' num2str(epsV(k)) newline]);
     
-    if t(k) > (tSave - dt) && t(k) <= (tSave + dt)
+    if k == nSave
                 
         vorticity = computeVorticity(ua, va, grid);
         
-        save(['./stored/cylinder_Re100_t' num2str(t(k)) '.mat'],...
+        save(['./stored/cylinder_Re100_t_' num2str(t(k)) '.mat'],...
             'ua', 'va', 'vorticity', 'grid');
         
     end
@@ -351,7 +333,7 @@ contourf(grid.x, grid.y, hypot(ua,va), 32,...
 xlabel('$x$'), ylabel('$y$')
 hold on
 shading interp,
-xlim(0.5*Lx + [-7 14]), ylim(0.5*Ly + [-5 5])
+xlim([-7 28]), ylim([-7 7])
 plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
 box on
 colormap('jet');
@@ -364,16 +346,16 @@ c.Label.FontSize = 16;
 
 vorticity = computeVorticity(ua, va, grid);
 subplot(212)
-contourf(grid.x, grid.y, vorticity, 16,...
+contourf(grid.x, grid.y, vorticity, 32,...
     'LineStyle', 'none'),
 xlabel('$x$'), ylabel('$y$')
 hold on
-xlim(0.5*Lx + [-7 14]), ylim(0.5*Ly + [-5 5])
+xlim([-7 28]), ylim([-7 7])
 plot(ib.xi, ib.eta, 'w-', 'linewidth', 1.25)
 box on
 colormap('jet');
 c = colorbar;
-caxis([-8 8])
+caxis([-4 4])
 c.TickLabelInterpreter = 'latex';
 c.Label.Interpreter = 'latex';
 c.Label.String = '$\omega_z$';
@@ -384,7 +366,7 @@ saveas(fig, 'cylinder_Re100', 'jpeg');
 figure,
 plot(t, -2*f.y, t, -2*f.x)
 ylim([-0.5 5])
-xlim([0 3.5])
+% xlim([0 5])
 xlabel('$\tau$')
 legend('$C_L$', '$C_D$', 'interpreter', 'latex')
 

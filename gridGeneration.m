@@ -13,12 +13,13 @@ function [ grid, u, v, p ] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0)
 % uniform grid expressed in self-adjoint form" by TK Sengupta, S Bhaumik 
 % and Shameem Usman, J. Comp. Phys. 230 (2011) 1822–1848
     N = 110;
-    beta = 2.4;
+    beta = 2.25;
  
     x = (0.5*Lx - x0)*(1 - tanh(beta*(1 - (1:N)/N))./tanh(beta));
     xr = x + 0.5*Lx + x0; xr(end) = Lx;
     xl = flip(0.5*Lx - x) - x0; xl(1) = 0;
     grid.X = [xl, (0.5*Lx - x0):hmin:(x0 + 0.5*Lx), xr];
+    grid.X = grid.X - 0.5*Lx;
     grid.Y = grid.X;
 
     grid.dX = diff(grid.X)';
