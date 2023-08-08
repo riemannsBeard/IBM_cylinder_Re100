@@ -1,0 +1,12 @@
+The case has been validated with a grid [-15, 45] x [-30, 30] and a grid resolution of 300 x 300 elements, 
+corresponding to the case C in Taira & Colonius (2007).
+
+RESULTS:
+
+CDmean = 1.35 +/- 0.046
+CLmean = +/- 0.69
+St = 0.196
+
+dxmin = 0.03
+Nk = 105
+dt = 0.0125

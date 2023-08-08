@@ -19,16 +19,17 @@ if ~exist('./matrixStuff.mat', 'file')
     Re = 200;
     Nx = 300; % Celdillas en x
     Ny = 300; % Celdillas en y
-    hmin = 0.02;
-    x0 = 0.8;
+    hmin = 0.03;
+    x0 = 0.75;
+    y0 = 0.75;
     Lx = 60;
     Ly = 60;
     CFL = 0.4;
     
     %% Staggered Grid Generation
-    [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0);
+    [grid, u, v, p] = gridGeneration(Lx, Ly, Nx, Ny, hmin, x0, y0);
     %dt = CFL*min(grid.cellMin^2*Re, grid.cellMin);
-    dt = 5e-3;
+    dt = 0.0125; %5e-3;
     t0 = 0;
     tf = 360;
     t = t0:dt:tf;
@@ -110,7 +111,7 @@ if ~exist('./matrixStuff.mat', 'file')
     Mhat = M.hat;
         
     clear Ehat_ Hhat_    
-%     H = E';
+
     % Matrix product to increase performance
     EET = E*E';    
     EH = sparse(E*H);
@@ -135,7 +136,6 @@ if ~exist('./matrixStuff.mat', 'file')
 else
     % Load matrix stuff
     load('./matrixStuff.mat')
-    
 end
 
 %% Simulation
@@ -195,8 +195,8 @@ for k = 1:length(t)
     
     % Flux calculation    
     qast = A\r1;
-    qu = q(1:Ny*(Nx-1));
-    qv = q(Ny*(Nx-1)+1:end);
+%     qu = q(1:Ny*(Nx-1));
+%     qv = q(Ny*(Nx-1)+1:end);
 
     %% 2. Solve the Poisson Equation
     % BC's due to Divergence
@@ -219,9 +219,9 @@ for k = 1:length(t)
     epsR(k) = norm(qp1 - q)/(dt*norm(qp1));
     
     %% Forces
-    fTilda.x = lambda(end-2*Nk+1:end-Nk);
-    fTilda.y = lambda(end-Nk+1:end);
-    fTilda.f = [fTilda.x; fTilda.y];
+%     fTilda.x = lambda(end-2*Nk+1:end-Nk);
+%     fTilda.y = lambda(end-Nk+1:end);
+%     fTilda.f = [fTilda.x; fTilda.y];
     
 %     f.f = -EEbyEH*fTilda.f;
     f.f = -EEbyEH*lambda(Ny*Nx+1:end);    
@@ -229,7 +229,7 @@ for k = 1:length(t)
     % Forces storage
     f.x(k) = sum(f.f(1:Nk).*ib.ds);
     f.y(k) = sum(f.f(Nk+1:end).*ib.ds);
-    F(k) = hypot(f.x(k), f.y(k));
+%     F(k) = hypot(f.x(k), f.y(k));
     
     % Update flux
     q = qp1;
@@ -265,7 +265,7 @@ for k = 1:length(t)
     disp(['Residuals u = ' num2str(epsU(k))]);
     disp(['Residuals v = ' num2str(epsV(k)) newline]);
     
-    if k == nSave
+    if rem(k, nSave) == 0
                 
         vorticity = computeVorticity(ua, va, grid);
         
@@ -363,9 +363,9 @@ c.Label.FontSize = 16;
 saveas(fig, 'cylinder_Re100', 'jpeg');
 
 %% Forces
-figure,
+figure(2),
 plot(t, -2*f.y, t, -2*f.x)
-ylim([-0.5 5])
+ylim([-1 5])
 % xlim([0 5])
 xlabel('$\tau$')
 legend('$C_L$', '$C_D$', 'interpreter', 'latex')

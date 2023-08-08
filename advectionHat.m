@@ -7,7 +7,7 @@ function [ Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc)
     Nhat.v = zeros(size(v));
     
     %% u
-    u2 = u.^2;   
+    u2 = u.*u;   
     u2c = zeros(Ny, Nx);
     u2c(:,1) = 0.5*(bc.uW.^2 + u2(:,1));
     u2c(:,2:end-1) = 0.5*(u2(:,2:end) + u2(:,1:end-1));
@@ -16,7 +16,7 @@ function [ Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc)
     Nhat.u = diff(u2c')'./grid.dXp';
 
     %% v
-    v2 = v.^2;    
+    v2 = v.*v;    
     v2c = zeros(Ny, Nx);
     v2c(end,:) = 0.5*(bc.vN.^2 + v2(end,:));
     v2c(2:end-1,:) = 0.5*(v2(2:end,:) + v2(1:end-1,:));
@@ -37,15 +37,14 @@ function [ Nhat, ua, va, ue, ve] = advectionHat(grid, u, v, Nx, Ny, bc)
     
     Nhat.u = reshape(Nhat.u + diff([uvS; uv; uvN], 1, 1)./grid.dY, [], 1);
     Nhat.v = reshape(Nhat.v + diff([uvW uv uvE], 1, 2)./grid.dX', [], 1);
-    
-    
+        
     %% Condiciones de contorno (en los nodos de la malla externa)
     
     % u
     uN = grid.X*0 + 1;
     uS = grid.X*0 + 1;
     uW = bc.uW;
-    uE = u(:,end);
+    uE = bc.uE;
     
     % v
     vN = 0.5*(grid.X(2:end) + grid.X(1:end-1))*0;

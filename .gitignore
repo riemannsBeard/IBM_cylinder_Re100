@@ -8,6 +8,6 @@
 *.mat
 
 # Matlab code generation folders
-stored/
-forces/
+#stored/
+#forces/
 

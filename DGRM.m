@@ -70,8 +70,8 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
         
     %% MATRIZ DE FLUJO
     
-    dyj = spdiags(grid.dY, 0, Ny, Ny);
-    dxi = spdiags(grid.dX, 0, Nx, Nx);
+    dyj = sparse(diag(grid.dY, 0));
+    dxi = sparse(diag(grid.dX, 0));
     
     R.u = kron(speye(Nx-1), dyj);
     R.v = kron(dxi, speye(Ny-1));
@@ -88,8 +88,8 @@ function [ D, G, R, M ] = DGRM( grid, Nx, Ny )
     Ix = spdiags(ix, 0, Nx, Nx);
     Iy = spdiags(iy, 0, Ny, Ny);
     
-    Dxp = spdiags(grid.dXp, 0, Nx-1, Nx-1);
-    Dyp = spdiags(grid.dYp, 0, Ny-1, Ny-1);
+    Dxp = sparse(diag(grid.dXp, 0));
+    Dyp = sparse(diag(grid.dYp, 0));
 
     % Mhat
     Mhat.u = kron(Dxp, Iy);
